@@ -1,0 +1,44 @@
+@prefix http: <http://www.w3.org/2011/http#> . 
+@prefix httpm: <http://www.w3.org/2011/http-methods#> . 
+@prefix math: <http://www.w3.org/2000/10/swap/math#> .
+@prefix san: <http://www.irit.fr/recherches/MELODI/ontologies/SAN#> .
+@prefix vcard: <http://www.w3.org/2006/vcard/ns#> .
+@prefix qudt: <http://qudt.org/schema/qudt#> .
+
+{
+  [] http:mthd httpm:GET ; 
+     http:requestURI <http://scc-cnor-129py5.scc.kit.edu:8080/marmotta/ldp/ldbc/SensorPart/TempValue/ObservationValue> .
+}
+
+{
+  ?a qudt:QuantityValue ?x . 
+  ?x math:lessThan "25" .
+}
+=> 
+{
+  [] http:mthd httpm:PUT ; 
+     http:requestURI <http://192.168.137.201/off> ; 
+	 http:body {
+		[] a san:ActuatingDevice;
+			san:hasEffect "TurnOff" ;
+			vcard:hasAddress <http://dbpedia.org/page/Karlsruhe> .
+	 } .
+}
+.
+
+
+{
+  ?a qudt:QuantityValue ?x . 
+  ?x math:greaterThan "25" .
+}
+=> 
+{
+  [] http:mthd httpm:PUT ; 
+     http:requestURI <http://192.168.137.201/on> ;
+	 http:body {
+		[] a san:ActuatingDevice;
+			san:hasEffect "TurnOn" ;
+			vcard:hasAddress <http://dbpedia.org/page/Karlsruhe> .
+	 } .
+} 
+.
