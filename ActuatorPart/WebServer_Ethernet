@@ -7,7 +7,7 @@
 int fanPin = 4;
 #define MAC_LENGTH 6
 const byte mac[MAC_LENGTH] PROGMEM = {  0x90, 0xA2, 0xDA, 0x10, 0xBB, 0xB7 };
-IPAddress ip(192, 168, 137, 56);
+IPAddress ip(192,168,137,201);
 
 // Initialize the Ethernet server library
 // with the IP address and port you want to use (80 default for http)
