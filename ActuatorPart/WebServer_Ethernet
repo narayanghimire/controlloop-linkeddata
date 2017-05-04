@@ -1,0 +1,139 @@
+#include <SPI.h>
+#include <Ethernet.h>
+#include <avr/pgmspace.h>
+
+#define REQ_LEN 20 
+
+int fanPin = 4;
+#define MAC_LENGTH 6
+const byte mac[MAC_LENGTH] PROGMEM = {  0x90, 0xA2, 0xDA, 0x10, 0xBB, 0xB7 };
+IPAddress ip(192, 168, 137, 56);
+
+// Initialize the Ethernet server library
+// with the IP address and port you want to use (80 default for http)
+EthernetServer server(80);
+
+char buf_req[REQ_LEN] = {0};
+char req_index = 0;
+
+#define BUF_LEN  900
+char buf_content[BUF_LEN];
+int counter = 0;
+
+  
+const char token1[] PROGMEM = "GET /off ";
+const char token2[] PROGMEM = "PUT /off";
+const char token3[] PROGMEM = "PUT /on";
+const char token4[] PROGMEM = "GET /on";
+const char token5[] PROGMEM = "GET / ";
+
+
+void setup() {
+  byte my_mac[MAC_LENGTH]; //reserves space for mac in sram
+  
+  memcpy_P(my_mac, mac, MAC_LENGTH); // copies indicated bytes from flash to sram
+  
+  // Open serial communications and wait for port to open:
+  Serial.begin(38400);
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for native USB port only
+  }
+  // start the Ethernet connection and the server:
+  Ethernet.begin(mac, ip);
+  server.begin();
+  Serial.print(F("starting... "));
+  Serial.println(Ethernet.localIP());
+
+  //reserve full buffer with EOS (end of string)
+  memset(buf_content, 0, BUF_LEN);
+
+  pinMode(fanPin, OUTPUT);
+  digitalWrite(fanPin, HIGH);
+}
+
+void loop() {
+  // listen for incoming clients
+  EthernetClient client = server.available();
+  if (client) {
+    Serial.println(F("new client"));
+    // an http request ends with a blank line
+    boolean currentLineIsBlank = true;
+
+    //Response of LDFU is processed
+    while (client.connected()) {
+      if (client.available()) {
+        char c = client.read();
+        if (req_index < (REQ_LEN - 1)) { //saves first line of header to assign appropriate response later
+          buf_req[req_index] = c;
+          req_index++;
+        }
+        Serial.write(c);
+        if (c == '\n' && currentLineIsBlank) {
+          for (int i=0; i < BUF_LEN; i++) { //content saves in field
+             buf_content[i] = client.read();
+             Serial.write(buf_content[i]);
+             if (client.available() == 0) { // if client is not available and therefore full content is saved, break
+              break;
+             }
+             counter++; // Counter indicates length of the field
+          }
+      // if loop looks for appropriate response
+      if ((strstr_P(buf_req, token1) != 0) || (strstr_P(buf_req, token2) != 0)) { 
+            client.println(F("HTTP/1.1 200 OK"));
+            client.println(F("Content-Type: application/rdf+xml"));
+            client.print(F("Content-Length: "));
+            client.println(counter);
+            client.println(F("Connection: close"));
+            client.println();
+            for (int i = 0; i<counter; i++) {
+              client.print(buf_content[i]);
+            }
+            
+            digitalWrite(fanPin, HIGH);
+          }
+      else if ((strstr_P(buf_req, token3) != 0) || (strstr_P(buf_req, token4) != 0)) { 
+            client.println(F("HTTP/1.1 200 OK"));
+            client.println(F("Content-Type: application/rdf+xml"));
+            client.print(F("Content-Length: "));
+            client.println(counter);
+            client.println(F("Connection: Keep Alive"));
+            client.println();
+            for (int i = 0; i<counter; i++) {
+              client.print(buf_content[i]);
+            }
+            digitalWrite(fanPin, LOW);
+          }
+      else if (strstr_P(buf_req, token5) != 0) {
+            client.println(F("HTTP/1.1 200 OK"));
+            client.println(F("Connection: close"));
+            client.println();
+          }
+          else {
+            client.println(F("HTTP/1.1 404 Not Found")); //204 No Content
+            client.println(F("Connection: Keep Alive"));
+
+          }
+          req_index = 0;
+          memset(buf_req, 0, REQ_LEN);
+          break;
+        }
+        if (c == '\n') {
+          // last character on line of received text
+          // starting new line with next character read
+          currentLineIsBlank = true;
+        }
+        else if (c != '\r') {
+          // a text character was received from client
+          currentLineIsBlank = false;
+        }
+        //        } // first line break
+      } // if (client.available())
+    } // while (client.connected())
+    // give the web browser time to receive the data
+    delay(1);
+    // close the connection:
+    client.stop();
+    Serial.println(F("client disconnected"));
+    Serial.println();
+  }
+}
