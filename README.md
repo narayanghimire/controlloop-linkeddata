@@ -1,5 +1,5 @@
 # controlloop-linkeddata
-## Master Lab Project
+## Bachelor Thesis about an IoT Control Loop based on a read/write Linked Data Architecture at AIFB, KIT Karlsruhe
 
 Links to the Container with the included triples on the Apache Marmotta : 
 
